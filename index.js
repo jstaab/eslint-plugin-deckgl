@@ -50,11 +50,6 @@ module.exports = {
         
               propertyMap.set(property, new Set());
 
-              /** @type Set<string> */
-              const toReportProperty = new Set();
-              /** @type Set<string> */
-              const toReportTrigger = new Set();
-
               scope.through.forEach(ref => {
                 if (!ref.resolved) {
                   return;
