@@ -11,21 +11,34 @@ module.exports = {
           });
         }
 
-        function getVariableDefinition(variableName) {
-          const variable = context.getScope().set.get(variableName) || {};
-          const { defs } = variable;
-
-          if (!defs || !defs.length) {
+        function findVariableDefinition(variable, scope) {
+          if (scope == null) {
             return null;
           }
+          
+          const found = scope.variables.find(v => v.name === variable.name);
+          
+          if (!found) {
+            if (scope.upper) {
+              return findVariableDefinition(variable, scope.upper)
+            }
 
-          const variableDefinition = defs[0];
-
-          if (variableDefinition.node.type !== 'VariableDeclarator') {
             return null;
-          }
+          } else {
+            const { defs } = found;
 
-          return variableDefinition.node.init;
+            if (!defs || !defs.length) {
+              return null;
+            }
+
+            const variableDefinition = defs[0];
+
+            if (variableDefinition.node.type !== 'VariableDeclarator') {
+              return null;
+            }
+
+            return variableDefinition.node.init;
+          }
         }
 
         function checkExhaustiveTriggers(identifierNode) {
@@ -44,7 +57,7 @@ module.exports = {
           let params = node.arguments[0];
         
           if (params.type === 'Identifier') {
-            const identifier = getVariableDefinition(params.name);
+            const identifier = findVariableDefinition(params, context.getScope());
             
             if (!identifier) {
               return;
@@ -80,7 +93,7 @@ module.exports = {
             if (/Function/.test(property.value.type)) {
               scope = scopeManager.acquire(property.value);
             } else  if (property.value.type === 'Identifier') {
-              const identifier = getVariableDefinition(property.value.name);
+              const identifier = findVariableDefinition(property.value, context.getScope());
               
               if (!identifier) {
                 return;
