@@ -4,6 +4,8 @@ module.exports = {
       create(context) {
         const { scopeManager } = context.getSourceCode();
         let globalScope;
+        /** @type Map<any, Set<string>> */
+        let propertyMap;
         
         function isGlobalProperty(node) {
           return globalScope.variables.some(variable => {
@@ -73,23 +75,20 @@ module.exports = {
           }
 
           const properties = [...params.properties];
-          let spreadElementIndex = properties.findIndex(p => p.type === 'SpreadElement')
+          let spreadElementIndex;
 
-          while (spreadElementIndex >= 0) {
+          while ((spreadElementIndex = properties.findIndex(p => p.type === 'SpreadElement')) >= 0) {
             const spreadElement = properties[spreadElementIndex];
             const identifier = findVariableDefinition(spreadElement.argument)
+            properties.splice(spreadElementIndex, 1);
+
             if (identifier && identifier.type === 'ObjectExpression') {
-              properties.splice(spreadElementIndex, 1, ...identifier.properties);
-            } else {
-              properties.splice(spreadElementIndex, 1);
+              properties.splice(spreadElementIndex, 0, ...identifier.properties);
             }
             spreadElementIndex = properties.findIndex(p => p.type === 'SpreadElement')
           }
 
           const updateTriggers = properties.find(({ key }) => key && key.name === 'updateTriggers');
-        
-          /** @type Map<any, Set<string>> */
-          const propertyMap = new Map()
 
           properties.forEach(property => {
             if (
@@ -159,7 +158,7 @@ module.exports = {
                     propertyMap.set(trigger, new Set());
                   }
 
-                  propertyMap.get(trigger).add(`${property.key.name} updateTrigger should be an array`);  
+                  propertyMap.get(trigger).add(`"${property.key.name}" updateTrigger should be an array`);  
                 } else {
                   triggerElements = trigger.value.elements;
                 }
@@ -168,23 +167,25 @@ module.exports = {
               const foundTrigger = triggerElements.find(element => element && element.name === ref.resolved.name)
       
               if (!foundTrigger) {
-                propertyMap.get(property).add(`${ref.resolved.name} missing from updateTriggers`);
+                propertyMap.get(property).add(`"${ref.resolved.name}" missing from updateTriggers`);
               }
             });
           });
-
-          for (const [property, set] of propertyMap.entries()) {
-            for (const msg of set.values()) {
-              context.report(property, msg);
-            }
-          }
-
-          propertyMap.clear();
         }
         
         return {
           Program() {
-            globalScope = context.getScope();
+            globalScope = context.getScope();                  
+            propertyMap = new Map();
+          },
+          'Program:exit'() {
+            for (const [property, set] of propertyMap.entries()) {
+              for (const msg of set.values()) {
+                context.report(property, msg);
+              }
+            }
+
+            propertyMap.clear();
           },
           // new Layer()
           'NewExpression > Identifier'(node) {
