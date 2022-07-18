@@ -11,7 +11,7 @@ module.exports = {
           });
         }
 
-        function findVariableDefinition(variable, scope) {
+        function findVariableDefinition(variable, scope = context.getScope()) {
           if (scope == null) {
             return null;
           }
@@ -59,7 +59,7 @@ module.exports = {
           let params = node.arguments[0];
         
           if (params.type === 'Identifier') {
-            const identifier = findVariableDefinition(params, context.getScope());
+            const identifier = findVariableDefinition(params);
             
             if (!identifier) {
               return;
@@ -72,12 +72,26 @@ module.exports = {
             return;
           }
 
-          const updateTriggers = params.properties.find(({ key }) => key && key.name === 'updateTriggers');
+          const properties = [...params.properties];
+          let spreadElementIndex = properties.findIndex(p => p.type === 'SpreadElement')
+
+          while (spreadElementIndex >= 0) {
+            const spreadElement = properties[spreadElementIndex];
+            const identifier = findVariableDefinition(spreadElement.argument)
+            if (identifier && identifier.type === 'ObjectExpression') {
+              properties.splice(spreadElementIndex, 1, ...identifier.properties);
+            } else {
+              properties.splice(spreadElementIndex, 1);
+            }
+            spreadElementIndex = properties.findIndex(p => p.type === 'SpreadElement')
+          }
+
+          const updateTriggers = properties.find(({ key }) => key && key.name === 'updateTriggers');
         
           /** @type Map<any, Set<string>> */
           const propertyMap = new Map()
 
-          params.properties.forEach(property => {
+          properties.forEach(property => {
             if (
               property.type !== 'Property' ||
               !property.key.name.startsWith('get')
@@ -95,7 +109,7 @@ module.exports = {
             if (/Function/.test(property.value.type)) {
               scope = scopeManager.acquire(property.value);
             } else  if (property.value.type === 'Identifier') {
-              const identifier = findVariableDefinition(property.value, context.getScope());
+              const identifier = findVariableDefinition(property.value);
               
               if (!identifier) {
                 return;
