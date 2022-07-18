@@ -33,11 +33,13 @@ module.exports = {
 
             const variableDefinition = defs[0];
 
-            if (variableDefinition.node.type !== 'VariableDeclarator') {
-              return null;
+            if (variableDefinition.node.type === 'VariableDeclarator') {
+              return variableDefinition.node.init
+            } else if (variableDefinition.node.type === 'FunctionDeclaration') {
+              return variableDefinition.node;
             }
 
-            return variableDefinition.node.init;
+            return null;
           }
         }
 
