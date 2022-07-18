@@ -2,7 +2,7 @@ module.exports = {
   rules: {
     "exhaustive-triggers": {
       create(context) {
-        const code = context.getSourceCode();
+        const { scopeManager } = context.getSourceCode();
         let globalScope;
         
         function isGlobalProperty(node) {
@@ -24,12 +24,29 @@ module.exports = {
             return;
           }
         
-          const params = node.arguments[0];
+          let params = node.arguments[0];
         
+          if (params.type === 'Identifier') {
+            const variable = context.getScope().set.get(params.name) || {};
+            const { defs } = variable;
+
+            if (!defs || !defs.length) {
+              return;
+            }
+
+            const variableDefinition = defs[0];
+
+            if (variableDefinition.node.type !== 'VariableDeclarator' || !variableDefinition.node.init) {
+              return;
+            }
+
+            params = variableDefinition.node.init;
+          }
+          
           if (params.type !== 'ObjectExpression') {
             return;
           }
-        
+
           const updateTriggers = params.properties.find(({ key }) => key && key.name === 'updateTriggers');
         
           /** @type Map<any, Set<string>> */
@@ -46,7 +63,7 @@ module.exports = {
                 return;
               }
 
-              const scope = code.scopeManager.acquire(property.value);
+              const scope = scopeManager.acquire(property.value);
         
               propertyMap.set(property, new Set());
 
