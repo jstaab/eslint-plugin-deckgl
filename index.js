@@ -89,7 +89,6 @@ module.exports = {
             if (identifier && identifier.type === 'ObjectExpression') {
               properties.splice(spreadElementIndex, 0, ...identifier.properties);
             }
-            spreadElementIndex = properties.findIndex(p => p.type === 'SpreadElement');
           }
 
           const updateTriggers = properties.find(({ key }) => key && key.name === 'updateTriggers');
