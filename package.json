@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-deckgl",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "author": "Jasper Staab <jasper.staab@10xgenomics.com>",
   "description": "Deck.gl specific linting rules for ESLint",
   "main": "index.js",
@@ -20,5 +20,8 @@
     "eslintplugin",
     "deckgl"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "prettier": "^2.7.1"
+  }
 }
